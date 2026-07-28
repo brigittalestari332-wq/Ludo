@@ -96,6 +96,8 @@
             background: rgba(30, 41, 59, 0.7);
             border-radius: 14px;
             border: 1px solid rgba(255, 255, 255, 0.08);
+            flex-wrap: wrap;
+            gap: 5px;
         }
 
         .hud-item {
@@ -121,13 +123,14 @@
             background: linear-gradient(135deg, #f59e0b, #d97706);
             border: none;
             color: #ffffff;
-            padding: 8px 14px;
+            padding: 6px 12px;
             border-radius: 10px;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-weight: 700;
             box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
             transition: all 0.2s;
+            white-space: nowrap;
         }
 
         .sound-btn {
@@ -176,6 +179,7 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             transition: background 0.1s, transform 0.1s;
+            touch-action: manipulation;
         }
 
         .joy-btn:active {
@@ -279,6 +283,7 @@
     </div>
 
     <script>
+        // ========== INISIALISASI ==========
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -290,24 +295,27 @@
         const gridSize = 15;
         const tileSize = canvas.width / gridSize;
 
-        // Player (Bidak Kuning)
-        let player = { x: 1, y: 13, stepsLeft: 0, radius: 10 };
+        // State Game
+        let player = { x: 1, y: 13 };
         let stars = [];
         let traps = [];
         let enemies = [];
 
         let diceValue = 0;
+        let stepsLeft = 0; // Langkah yang tersisa
         let score = 0;
         let level = 1;
         let gameActive = true;
         let soundEnabled = true;
+        let moveCooldown = false; // Mencegah spam gerakan
 
-        // AUDIO SYNTHESIZER
+        // AUDIO
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
 
         function initAudio() {
             if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         function playSound(freq, type, duration) {
@@ -326,81 +334,130 @@
             } catch (e) {}
         }
 
+        // Toggle Suara
         audioBtn.addEventListener('click', () => {
             initAudio();
             soundEnabled = !soundEnabled;
             audioBtn.innerText = soundEnabled ? '🔊 ON' : '🔇 OFF';
         });
 
-        // LEMPAR DADU
+        // ========== FUNGSI GAME ==========
         function rollDice() {
             initAudio();
-            if (player.stepsLeft > 0) return; // Belum menghabiskan langkah
-            
+            if (!gameActive) {
+                // Restart game
+                startGame();
+                return;
+            }
+            if (stepsLeft > 0) {
+                playSound(200, 'sine', 0.1);
+                return; // Masih ada langkah
+            }
+
             diceValue = Math.floor(Math.random() * 6) + 1;
-            player.stepsLeft = diceValue;
+            stepsLeft = diceValue;
             diceValEl.innerText = diceValue;
             playSound(400, 'triangle', 0.15);
         }
 
-        // GENERATE MAP
+        // Generate Level
         function initLevel() {
             stars = [];
             traps = [];
             enemies = [];
 
-            // Target Bintang
+            // Bintang
             for (let i = 0; i < 3 + level; i++) {
-                stars.push({
-                    x: Math.floor(Math.random() * (gridSize - 2)) + 1,
-                    y: Math.floor(Math.random() * (gridSize - 2)) + 1
-                });
+                let pos = getRandomEmptyPos();
+                stars.push(pos);
             }
 
-            // Rintangan Perangkap Merah
+            // Jebakan
             for (let i = 0; i < 2 + level; i++) {
-                traps.push({
-                    x: Math.floor(Math.random() * (gridSize - 2)) + 1,
-                    y: Math.floor(Math.random() * (gridSize - 2)) + 1
-                });
+                let pos = getRandomEmptyPos();
+                traps.push(pos);
             }
 
-            // Musuh (Bidak Merah)
+            // Musuh
             for (let i = 0; i < Math.min(level, 3); i++) {
+                let pos = getRandomEmptyPos();
                 enemies.push({
-                    x: Math.floor(Math.random() * (gridSize - 4)) + 2,
-                    y: Math.floor(Math.random() * (gridSize - 4)) + 2,
+                    x: pos.x,
+                    y: pos.y,
                     dir: Math.random() < 0.5 ? 1 : -1
                 });
             }
         }
 
-        // KONTROL ARAH
+        // Cari posisi kosong
+        function getRandomEmptyPos() {
+            let attempts = 0;
+            while (attempts < 50) {
+                let x = Math.floor(Math.random() * (gridSize - 2)) + 1;
+                let y = Math.floor(Math.random() * (gridSize - 2)) + 1;
+                // Hindari posisi player dan posisi yang sudah ada
+                if (x === player.x && y === player.y) continue;
+                let occupied = false;
+                for (let s of stars) if (s.x === x && s.y === y) { occupied = true; break; }
+                for (let t of traps) if (t.x === x && t.y === y) { occupied = true; break; }
+                for (let e of enemies) if (e.x === x && e.y === y) { occupied = true; break; }
+                if (!occupied) return { x, y };
+                attempts++;
+            }
+            return { x: 1, y: 1 };
+        }
+
+        // Kontrol Gerakan
         function movePlayer(dir) {
             initAudio();
-            if (player.stepsLeft <= 0) return;
+            if (!gameActive) return;
+            if (stepsLeft <= 0) {
+                playSound(150, 'sine', 0.1);
+                return;
+            }
+            if (moveCooldown) return;
+            moveCooldown = true;
+            setTimeout(() => { moveCooldown = false; }, 120);
 
             let nextX = player.x;
             let nextY = player.y;
 
-            if (dir === 'UP') nextY--;
-            if (dir === 'DOWN') nextY++;
-            if (dir === 'LEFT') nextX--;
-            if (dir === 'RIGHT') nextX++;
+            switch (dir) {
+                case 'UP': nextY--; break;
+                case 'DOWN': nextY++; break;
+                case 'LEFT': nextX--; break;
+                case 'RIGHT': nextX++; break;
+            }
 
-            // Batas Papan Game
-            if (nextX >= 0 && nextX < gridSize && nextY >= 0 && nextY < gridSize) {
+            // Cek batas
+            if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) {
+                playSound(150, 'sine', 0.1);
+                return;
+            }
+
+            // Cek apakah ada musuh di posisi tujuan (langsung kena)
+            let enemyThere = enemies.some(e => e.x === nextX && e.y === nextY);
+            if (enemyThere) {
                 player.x = nextX;
                 player.y = nextY;
-                player.stepsLeft--;
-                diceValEl.innerText = player.stepsLeft;
-                playSound(300, 'sine', 0.08);
-
-                checkCollisions();
+                stepsLeft--;
+                diceValEl.innerText = stepsLeft;
+                gameOver();
+                return;
             }
+
+            player.x = nextX;
+            player.y = nextY;
+            stepsLeft--;
+            diceValEl.innerText = stepsLeft;
+            playSound(300, 'sine', 0.08);
+
+            checkCollisions();
         }
 
-        window.addEventListener('keydown', e => {
+        // Keyboard
+        window.addEventListener('keydown', (e) => {
+            e.preventDefault();
             switch (e.key) {
                 case 'ArrowUp': case 'w': case 'W': movePlayer('UP'); break;
                 case 'ArrowDown': case 's': case 'S': movePlayer('DOWN'); break;
@@ -410,7 +467,7 @@
             }
         });
 
-        // CEK TABRAKAN
+        // Cek Tabrakan
         function checkCollisions() {
             // Ambil Bintang
             for (let i = stars.length - 1; i >= 0; i--) {
@@ -434,124 +491,175 @@
             for (let trap of traps) {
                 if (player.x === trap.x && player.y === trap.y) {
                     gameOver();
+                    return;
+                }
+            }
+
+            // Cek musuh di posisi player (setelah gerakan)
+            for (let enemy of enemies) {
+                if (player.x === enemy.x && player.y === enemy.y) {
+                    gameOver();
+                    return;
                 }
             }
         }
 
-        // UPDATE MUSUH
+        // Update Musuh
         function updateEnemies() {
             if (!gameActive) return;
 
-            enemies.forEach(e => {
+            for (let e of enemies) {
+                let oldX = e.x;
                 e.x += e.dir;
-                if (e.x <= 1 || e.x >= gridSize - 2) e.dir *= -1;
-
-                // Tabrakan dengan Player
-                if (Math.abs(player.x - e.x) < 0.8 && Math.abs(player.y - e.y) < 0.8) {
-                    gameOver();
+                if (e.x <= 1 || e.x >= gridSize - 2) {
+                    e.dir *= -1;
+                    e.x += e.dir * 2;
                 }
-            });
+
+                // Tabrakan dengan Player (jika musuh bergerak ke posisi player)
+                if (e.x === player.x && e.y === player.y) {
+                    gameOver();
+                    return;
+                }
+
+                // Cek tabrakan dengan jebakan (jebakan menghilang)
+                for (let i = traps.length - 1; i >= 0; i--) {
+                    if (e.x === traps[i].x && e.y === traps[i].y) {
+                        traps.splice(i, 1);
+                    }
+                }
+            }
         }
 
-        // DESAIN PAPAN LUDO REALISTIS
+        // ========== GAME OVER & RESTART ==========
+        function gameOver() {
+            if (!gameActive) return;
+            playSound(120, 'sawtooth', 0.4);
+            gameActive = false;
+            stepsLeft = 0;
+            diceValEl.innerText = '-';
+        }
+
+        function startGame() {
+            player = { x: 1, y: 13 };
+            stepsLeft = 0;
+            score = 0;
+            level = 1;
+            gameActive = true;
+            scoreEl.innerText = score;
+            levelEl.innerText = level;
+            diceValEl.innerText = '-';
+            initLevel();
+            playSound(500, 'sine', 0.2);
+        }
+
+        // ========== DRAWING ==========
         function drawBoard() {
+            // Background papan
             ctx.fillStyle = '#1e293b';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Quadrant Warna Ludo
             let half = canvas.width / 2;
-            
-            // Merah (Kiri Atas)
-            ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 0, half - 20, half - 20);
-            // Hijau (Kanan Atas)
-            ctx.fillStyle = '#22c55e'; ctx.fillRect(half + 20, 0, half - 20, half - 20);
-            // Kuning (Kiri Bawah)
-            ctx.fillStyle = '#eab308'; ctx.fillRect(0, half + 20, half - 20, half - 20);
-            // Biru (Kanan Bawah)
-            ctx.fillStyle = '#3b82f6'; ctx.fillRect(half + 20, half + 20, half - 20, half - 20);
+            let margin = 20;
 
-            // Kotak-Kotak Jalur Grid
+            // Merah (Kiri Atas)
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(0, 0, half - margin, half - margin);
+            // Hijau (Kanan Atas)
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(half + margin, 0, half - margin, half - margin);
+            // Kuning (Kiri Bawah)
+            ctx.fillStyle = '#eab308';
+            ctx.fillRect(0, half + margin, half - margin, half - margin);
+            // Biru (Kanan Bawah)
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(half + margin, half + margin, half - margin, half - margin);
+
+            // Grid
             for (let x = 0; x < gridSize; x++) {
                 for (let y = 0; y < gridSize; y++) {
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
                     ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
                 }
             }
 
-            // Bintang (Target)
+            // Bintang
             stars.forEach(s => {
                 ctx.fillStyle = '#fbbf24';
+                ctx.shadowColor = '#fbbf24';
+                ctx.shadowBlur = 12;
                 ctx.beginPath();
-                ctx.arc((s.x + 0.5) * tileSize, (s.y + 0.5) * tileSize, 6, 0, Math.PI * 2);
+                ctx.arc((s.x + 0.5) * tileSize, (s.y + 0.5) * tileSize, 7, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.shadowBlur = 0;
             });
 
             // Perangkap
             traps.forEach(t => {
                 ctx.fillStyle = '#dc2626';
+                ctx.shadowColor = '#dc2626';
+                ctx.shadowBlur = 8;
                 ctx.fillRect(t.x * tileSize + 4, t.y * tileSize + 4, tileSize - 8, tileSize - 8);
+                ctx.shadowBlur = 0;
             });
 
-            // Bidak Musuh (Merah)
+            // Musuh
             enemies.forEach(e => {
                 ctx.fillStyle = '#f43f5e';
+                ctx.shadowColor = '#f43f5e';
+                ctx.shadowBlur = 10;
                 ctx.beginPath();
                 ctx.arc((e.x + 0.5) * tileSize, (e.y + 0.5) * tileSize, 8, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.shadowBlur = 0;
             });
 
-            // BIDAK PLAYER (Kuning Emas)
+            // PLAYER (Kuning)
             ctx.fillStyle = '#facc15';
             ctx.shadowColor = '#facc15';
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 15;
             ctx.beginPath();
-            ctx.arc((player.x + 0.5) * tileSize, (player.y + 0.5) * tileSize, 10, 0, Math.PI * 2);
+            ctx.arc((player.x + 0.5) * tileSize, (player.y + 0.5) * tileSize, 11, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Overlay Game Over
+            // Game Over Overlay
             if (!gameActive) {
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#ef4444';
                 ctx.font = 'bold 22px "Plus Jakarta Sans", sans-serif';
-                ctx.fillText('BIDAK TERTABRAK! 💥', canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillText('💥 BIDAK TERTABRAK!', canvas.width / 2, canvas.height / 2 - 20);
                 ctx.fillStyle = '#f8fafc';
-                ctx.font = '14px "Plus Jakarta Sans", sans-serif';
-                ctx.fillText('Skor Akhir Kamu: ' + score, canvas.width / 2, canvas.height / 2 + 10);
+                ctx.font = '16px "Plus Jakarta Sans", sans-serif';
+                ctx.fillText('Skor Akhir: ' + score, canvas.width / 2, canvas.height / 2 + 20);
                 ctx.fillStyle = '#fbbf24';
-                ctx.fillText('Klik Lempar Dadu untuk Main Lagi', canvas.width / 2, canvas.height / 2 + 40);
+                ctx.font = '14px "Plus Jakarta Sans", sans-serif';
+                ctx.fillText('Klik 🎲 Dadu untuk Main Lagi', canvas.width / 2, canvas.height / 2 + 55);
                 ctx.textAlign = 'left';
             }
         }
 
+        // ========== GAME LOOP ==========
         function gameLoop() {
             updateEnemies();
             drawBoard();
             requestAnimationFrame(gameLoop);
         }
 
-        function gameOver() {
-            playSound(120, 'sawtooth', 0.4);
-            gameActive = false;
-        }
-
-        function startGame() {
-            player = { x: 1, y: 13, stepsLeft: 0, radius: 10 };
-            score = 0;
-            level = 1;
-            scoreEl.innerText = score;
-            levelEl.innerText = level;
-            diceValEl.innerText = '-';
-            gameActive = true;
-            initLevel();
-        }
-
-        // Start Initial Setup
-        initLevel();
+        // ========== START ==========
+        startGame();
         gameLoop();
+
+        // Reset jika canvas diklik (untuk user experience)
+        canvas.addEventListener('click', () => {
+            if (!gameActive) rollDice();
+        });
+
+        console.log('🎮 Ludo King Arcade siap dimainkan!');
     </script>
 </body>
-</html>
+                    </html>                
