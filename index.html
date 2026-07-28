@@ -1,1 +1,557 @@
-test
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ludo King Arcade - GitHub Pages</title>
+    <style>
+        /* Reset & Base Styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #0f172a 100%);
+            background-attachment: fixed;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+        }
+
+        /* HEADER & BRANDING LOGO */
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: rgba(30, 27, 75, 0.75);
+            backdrop-filter: blur(12px);
+            padding: 12px 24px;
+            border-radius: 20px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .logo-svg {
+            width: 50px;
+            height: 50px;
+            filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6));
+        }
+
+        .logo-text h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #fbbf24, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            color: #fef08a;
+            font-weight: 600;
+        }
+
+        /* GAME BOARD CONTAINER */
+        #game-wrapper {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            padding: 15px;
+            border: 2px solid rgba(251, 191, 36, 0.25);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* HUD PANEL */
+        .hud-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 12px;
+            padding: 8px 15px;
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .hud-label {
+            font-size: 0.65rem;
+            color: #fbbf24;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .hud-value {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .sound-btn, .dice-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border: none;
+            color: #ffffff;
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 700;
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+            transition: all 0.2s;
+        }
+
+        .sound-btn {
+            background: rgba(251, 191, 36, 0.2);
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            color: #fbbf24;
+            box-shadow: none;
+        }
+
+        .dice-btn:active, .sound-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* CANVAS STYLING */
+        canvas {
+            background: #78350f;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 440px;
+            aspect-ratio: 1 / 1;
+            border: 3px solid rgba(251, 191, 36, 0.4);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            display: block;
+            cursor: pointer;
+        }
+
+        /* JOYSTICK CONTROL */
+        .joystick-container {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 55px);
+            grid-template-rows: repeat(3, 55px);
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .joy-btn {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            border-radius: 16px;
+            color: #fbbf24;
+            font-size: 1.4rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: background 0.1s, transform 0.1s;
+        }
+
+        .joy-btn:active {
+            background: #fbbf24;
+            color: #0f172a;
+            transform: scale(0.92);
+        }
+
+        .joy-up { grid-column: 2; grid-row: 1; }
+        .joy-left { grid-column: 1; grid-row: 2; }
+        .joy-right { grid-column: 3; grid-row: 2; }
+        .joy-down { grid-column: 2; grid-row: 3; }
+
+        /* INSTRUCTIONS */
+        .instructions {
+            margin-top: 20px;
+            background: rgba(30, 27, 75, 0.6);
+            border-radius: 16px;
+            padding: 15px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .instructions h3 {
+            color: #fbbf24;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .instructions li::before {
+            content: "• ";
+            color: #fbbf24;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOGO HEADER -->
+    <header>
+        <div class="logo-container">
+            <!-- Logo Mahkota & Dadu Ludo SVG -->
+            <svg class="logo-svg" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="#4338ca" stroke="#fbbf24" stroke-width="4"/>
+                <!-- Mahkota Ludo King -->
+                <polygon points="30,65 30,40 40,50 50,30 60,50 70,40 70,65" fill="#fbbf24"/>
+                <circle cx="30" cy="38" r="3" fill="#ef4444"/>
+                <circle cx="50" cy="28" r="3" fill="#3b82f6"/>
+                <circle cx="70" cy="38" r="3" fill="#22c55e"/>
+            </svg>
+            <div class="logo-text">
+                <h1>Ludo King Arcade</h1>
+                <p>Game Papan Interaktif (GitHub Pages)</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- GAME WRAPPER -->
+    <div id="game-wrapper">
+        <div class="hud-panel">
+            <div class="hud-item">
+                <span class="hud-label">Skor</span>
+                <span id="score-val" class="hud-value">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">Level</span>
+                <span id="level-val" class="hud-value">1</span>
+            </div>
+            <button id="dice-btn" class="dice-btn" onclick="rollDice()">🎲 Dadu: <span id="dice-val">-</span></button>
+            <button id="audio-toggle" class="sound-btn">🔊 ON</button>
+        </div>
+
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+        <!-- JOYSTICK VIRTUAL -->
+        <div class="joystick-container">
+            <button class="joy-btn joy-up" onclick="movePlayer('UP')">▲</button>
+            <button class="joy-btn joy-left" onclick="movePlayer('LEFT')">◄</button>
+            <button class="joy-btn joy-right" onclick="movePlayer('RIGHT')">►</button>
+            <button class="joy-btn joy-down" onclick="movePlayer('DOWN')">▼</button>
+        </div>
+    </div>
+
+    <!-- CARA BERMAIN -->
+    <div class="instructions">
+        <h3>📖 Cara Bermain</h3>
+        <ul>
+            <li>Klik tombol <b>🎲 Dadu</b> untuk mendapatkan jumlah langkah.</li>
+            <li>Gunakan <b>Joystick Virtual</b> atau <b>Panah Keyboard (W,A,S,D)</b> untuk menggerakkan Bidak Kuningmu di papan Ludo.</li>
+            <li>Makan **Bintang / Koin Emas** untuk mendapatkan skor dan menaikkan Level.</li>
+            <li>Hindari menabrak **Rintangan Beracun (Merah)** dan Bidak Musuh yang bisa membuatmu kembali ke markas!</li>
+        </ul>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const scoreEl = document.getElementById('score-val');
+        const levelEl = document.getElementById('level-val');
+        const diceValEl = document.getElementById('dice-val');
+        const audioBtn = document.getElementById('audio-toggle');
+
+        const gridSize = 15;
+        const tileSize = canvas.width / gridSize;
+
+        // Player (Bidak Kuning)
+        let player = { x: 1, y: 13, stepsLeft: 0, radius: 10 };
+        let stars = [];
+        let traps = [];
+        let enemies = [];
+
+        let diceValue = 0;
+        let score = 0;
+        let level = 1;
+        let gameActive = true;
+        let soundEnabled = true;
+
+        // AUDIO SYNTHESIZER
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+        }
+
+        function playSound(freq, type, duration) {
+            if (!soundEnabled || !audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {}
+        }
+
+        audioBtn.addEventListener('click', () => {
+            initAudio();
+            soundEnabled = !soundEnabled;
+            audioBtn.innerText = soundEnabled ? '🔊 ON' : '🔇 OFF';
+        });
+
+        // LEMPAR DADU
+        function rollDice() {
+            initAudio();
+            if (player.stepsLeft > 0) return; // Belum menghabiskan langkah
+            
+            diceValue = Math.floor(Math.random() * 6) + 1;
+            player.stepsLeft = diceValue;
+            diceValEl.innerText = diceValue;
+            playSound(400, 'triangle', 0.15);
+        }
+
+        // GENERATE MAP
+        function initLevel() {
+            stars = [];
+            traps = [];
+            enemies = [];
+
+            // Target Bintang
+            for (let i = 0; i < 3 + level; i++) {
+                stars.push({
+                    x: Math.floor(Math.random() * (gridSize - 2)) + 1,
+                    y: Math.floor(Math.random() * (gridSize - 2)) + 1
+                });
+            }
+
+            // Rintangan Perangkap Merah
+            for (let i = 0; i < 2 + level; i++) {
+                traps.push({
+                    x: Math.floor(Math.random() * (gridSize - 2)) + 1,
+                    y: Math.floor(Math.random() * (gridSize - 2)) + 1
+                });
+            }
+
+            // Musuh (Bidak Merah)
+            for (let i = 0; i < Math.min(level, 3); i++) {
+                enemies.push({
+                    x: Math.floor(Math.random() * (gridSize - 4)) + 2,
+                    y: Math.floor(Math.random() * (gridSize - 4)) + 2,
+                    dir: Math.random() < 0.5 ? 1 : -1
+                });
+            }
+        }
+
+        // KONTROL ARAH
+        function movePlayer(dir) {
+            initAudio();
+            if (player.stepsLeft <= 0) return;
+
+            let nextX = player.x;
+            let nextY = player.y;
+
+            if (dir === 'UP') nextY--;
+            if (dir === 'DOWN') nextY++;
+            if (dir === 'LEFT') nextX--;
+            if (dir === 'RIGHT') nextX++;
+
+            // Batas Papan Game
+            if (nextX >= 0 && nextX < gridSize && nextY >= 0 && nextY < gridSize) {
+                player.x = nextX;
+                player.y = nextY;
+                player.stepsLeft--;
+                diceValEl.innerText = player.stepsLeft;
+                playSound(300, 'sine', 0.08);
+
+                checkCollisions();
+            }
+        }
+
+        window.addEventListener('keydown', e => {
+            switch (e.key) {
+                case 'ArrowUp': case 'w': case 'W': movePlayer('UP'); break;
+                case 'ArrowDown': case 's': case 'S': movePlayer('DOWN'); break;
+                case 'ArrowLeft': case 'a': case 'A': movePlayer('LEFT'); break;
+                case 'ArrowRight': case 'd': case 'D': movePlayer('RIGHT'); break;
+                case ' ': rollDice(); break;
+            }
+        });
+
+        // CEK TABRAKAN
+        function checkCollisions() {
+            // Ambil Bintang
+            for (let i = stars.length - 1; i >= 0; i--) {
+                if (player.x === stars[i].x && player.y === stars[i].y) {
+                    score += 10;
+                    scoreEl.innerText = score;
+                    playSound(650, 'square', 0.2);
+                    stars.splice(i, 1);
+
+                    // Level Up jika bintang habis
+                    if (stars.length === 0) {
+                        level++;
+                        levelEl.innerText = level;
+                        initLevel();
+                        playSound(800, 'triangle', 0.3);
+                    }
+                }
+            }
+
+            // Tabrak Jebakan
+            for (let trap of traps) {
+                if (player.x === trap.x && player.y === trap.y) {
+                    gameOver();
+                }
+            }
+        }
+
+        // UPDATE MUSUH
+        function updateEnemies() {
+            if (!gameActive) return;
+
+            enemies.forEach(e => {
+                e.x += e.dir;
+                if (e.x <= 1 || e.x >= gridSize - 2) e.dir *= -1;
+
+                // Tabrakan dengan Player
+                if (Math.abs(player.x - e.x) < 0.8 && Math.abs(player.y - e.y) < 0.8) {
+                    gameOver();
+                }
+            });
+        }
+
+        // DESAIN PAPAN LUDO REALISTIS
+        function drawBoard() {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Quadrant Warna Ludo
+            let half = canvas.width / 2;
+            
+            // Merah (Kiri Atas)
+            ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 0, half - 20, half - 20);
+            // Hijau (Kanan Atas)
+            ctx.fillStyle = '#22c55e'; ctx.fillRect(half + 20, 0, half - 20, half - 20);
+            // Kuning (Kiri Bawah)
+            ctx.fillStyle = '#eab308'; ctx.fillRect(0, half + 20, half - 20, half - 20);
+            // Biru (Kanan Bawah)
+            ctx.fillStyle = '#3b82f6'; ctx.fillRect(half + 20, half + 20, half - 20, half - 20);
+
+            // Kotak-Kotak Jalur Grid
+            for (let x = 0; x < gridSize; x++) {
+                for (let y = 0; y < gridSize; y++) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                }
+            }
+
+            // Bintang (Target)
+            stars.forEach(s => {
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.arc((s.x + 0.5) * tileSize, (s.y + 0.5) * tileSize, 6, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Perangkap
+            traps.forEach(t => {
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(t.x * tileSize + 4, t.y * tileSize + 4, tileSize - 8, tileSize - 8);
+            });
+
+            // Bidak Musuh (Merah)
+            enemies.forEach(e => {
+                ctx.fillStyle = '#f43f5e';
+                ctx.beginPath();
+                ctx.arc((e.x + 0.5) * tileSize, (e.y + 0.5) * tileSize, 8, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // BIDAK PLAYER (Kuning Emas)
+            ctx.fillStyle = '#facc15';
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc((player.x + 0.5) * tileSize, (player.y + 0.5) * tileSize, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Overlay Game Over
+            if (!gameActive) {
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 22px "Plus Jakarta Sans", sans-serif';
+                ctx.fillText('BIDAK TERTABRAK! 💥', canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = '14px "Plus Jakarta Sans", sans-serif';
+                ctx.fillText('Skor Akhir Kamu: ' + score, canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillText('Klik Lempar Dadu untuk Main Lagi', canvas.width / 2, canvas.height / 2 + 40);
+                ctx.textAlign = 'left';
+            }
+        }
+
+        function gameLoop() {
+            updateEnemies();
+            drawBoard();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver() {
+            playSound(120, 'sawtooth', 0.4);
+            gameActive = false;
+        }
+
+        function startGame() {
+            player = { x: 1, y: 13, stepsLeft: 0, radius: 10 };
+            score = 0;
+            level = 1;
+            scoreEl.innerText = score;
+            levelEl.innerText = level;
+            diceValEl.innerText = '-';
+            gameActive = true;
+            initLevel();
+        }
+
+        // Start Initial Setup
+        initLevel();
+        gameLoop();
+    </script>
+</body>
+</html>
